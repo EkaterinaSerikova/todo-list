@@ -3,15 +3,16 @@ package app
 import (
 	"github.com/EkaterinaSerikova/todo-list/internal/config"
 	"github.com/EkaterinaSerikova/todo-list/internal/server"
+	"github.com/EkaterinaSerikova/todo-list/internal/service"
 )
 
 type App struct {
 	cfg       config.Config
 	ServerApi *server.ServerApi
-	repo      any
+	repo      service.Repository
 }
 
-func NewApp(cfg config.Config, server *server.ServerApi, repo any) *App {
+func NewApp(cfg config.Config, server *server.ServerApi, repo service.Repository) *App {
 	return &App{
 		cfg:       cfg,
 		ServerApi: server,
