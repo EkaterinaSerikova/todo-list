@@ -13,11 +13,16 @@ type Config struct {
 	Debug bool
 }
 
+const (
+	defaultHost     = "localhost"
+	defaultPort int = 8080
+)
+
 func ReadConfig() (*Config, error) {
 	var cfg Config
 
-	flag.StringVar(&cfg.Host, "host", "localhost", "flag for explicit server host specification")
-	flag.IntVar(&cfg.Port, "port", 8080, "flag for explicit server port specifications")
+	flag.StringVar(&cfg.Host, defaultHost, "localhost", "flag for explicit server host specification")
+	flag.IntVar(&cfg.Port, "port", defaultPort, "flag for explicit server port specifications")
 	flag.BoolVar(&cfg.Debug, "debug", false, "flag for explicit debug mode")
 
 	flag.Parse()

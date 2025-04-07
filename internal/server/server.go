@@ -8,68 +8,58 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/EkaterinaSerikova/todo-list/internal/config"
-	"github.com/EkaterinaSerikova/todo-list/pkg/logger"
+	"github.com/EkaterinaSerikova/todo-list/internal/service"
 )
 
 type ServerApi struct {
-	server *http.Server        // HTTP-сервер
-	valid  *validator.Validate // Валидатор запросов
-	repo   any                 // Репозиторий данных (интерфейсный тип)
+	server   *http.Server
+	valid    *validator.Validate
+	uService *service.UserService
+	tService *service.TaskService
 }
 
-func New(cfg config.Config, repo any) *ServerApi {
-	// Инициализация HTTP-сервера с адресом из конфига
+func New(cfg config.Config, uService *service.UserService, tService *service.TaskService) *ServerApi {
 	server := http.Server{
-		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port), // Форматирование адреса типа "host:port"
+		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 	}
 
-	// Создание роутера Gin с middleware по умолчанию (логгер и recovery)
-	router := gin.Default()
-
-	// Регистрация обработчиков для задач:
-
-	// GET /tasks - получение списка задач
-	router.GET("/tasks", func(c *gin.Context) {})
-	// POST /tasks - создание новой задачи
-	router.POST("/tasks", func(c *gin.Context) {})
-
-	// Группа маршрутов для операций с конкретной задачей (/tasks/:id)
-	task := router.Group("/tasks")
-	{
-		// PUT /tasks/:id - обновление задачи
-		task.PUT("/:id", func(c *gin.Context) {})
-		// DELETE /tasks/:id - удаление задачи
-		task.DELETE("/:id", func(c *gin.Context) {})
-		// GET /tasks/:id - получение задачи по ID
-		task.GET("/:id", func(c *gin.Context) {})
-	}
-
-	// Группа маршрутов для пользователей (/user)
-	user := router.Group("/user")
-	{
-		// POST /user/login - аутентификация пользователя
-		user.POST("/login", func(c *gin.Context) {})
-		// POST /user/register - регистрация нового пользователя
-		user.POST("/register", func(c *gin.Context) {})
-		// GET /user/profile - получение профиля пользователя
-		user.GET("/profile", func(c *gin.Context) {})
-	}
-
-	// Назначение роутера обработчиком HTTP-сервера
-	server.Handler = router
-
-	// Возврат нового экземпляра ServerApi
 	return &ServerApi{
-		server: &server,         // Указатель на HTTP-сервер
-		valid:  validator.New(), // Инициализация валидатора
-		repo:   repo,            // Переданный репозиторий
+		server:   &server,
+		valid:    validator.New(),
+		uService: uService,
+		tService: tService,
 	}
 }
 
 func (s *ServerApi) Start() error {
-	log := logger.Get()
-
-	log.Info().Str("server adress", s.server.Addr).Msg("server was started")
-
+	s.configRoutes()
 	return s.server.ListenAndServe()
+}
+
+func (s *ServerApi) configRoutes() {
+	router := gin.Default()
+	router.GET("/tasks", s.getTasks)
+	router.POST("/tasks", s.createTask)
+
+	task := router.Group("/tasks")
+	{
+		task.GET("/:id", s.getTaskById)
+		task.PUT("/:id", s.updateUserById)
+		task.DELETE("/:id", s.deleteTask)
+	}
+
+	router.GET("/users", s.getUsers)
+	router.POST("/users", s.createUser)
+
+	users := router.Group("/users")
+	{
+		users.POST("/register", s.registerUser)
+		users.POST("/login", s.loginUser)
+
+		users.GET("/users/:id", s.getUserById)
+		users.PUT("/users/:id", s.updateUserById)
+		users.DELETE("/users/:id", s.deleteUser)
+	}
+
+	s.server.Handler = router
 }
