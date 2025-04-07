@@ -75,9 +75,10 @@ func (m *MemStorage) LoginUser(user models.UserRequest) (models.User, error) {
 }
 
 func (m *MemStorage) RegisterUser(user models.User) (string, error) {
-	_, ok := m.users[user.UID]
-	if ok {
-		return "", errors.ErrUserAlreadyExists
+	for _, existingUser := range m.users {
+		if existingUser.Name == user.Name {
+			return "", errors.ErrUserAlreadyExists
+		}
 	}
 
 	m.users[user.UID] = user
@@ -102,16 +103,6 @@ func (m *MemStorage) GetUser(id string) (models.User, error) {
 		return models.User{}, errors.ErrUserNotFound
 	}
 	return user, nil
-}
-
-func (m *MemStorage) SaveUser(user models.User) error {
-	for _, t := range m.users {
-		if t.Login == user.Login {
-			return errors.ErrUserAlreadyExists
-		}
-	}
-	m.users[user.UID] = user
-	return nil
 }
 
 func (m *MemStorage) UpdateUser(user models.User) error {

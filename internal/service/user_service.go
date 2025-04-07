@@ -57,17 +57,6 @@ func (us *UserService) RegisterUser(user models.User) (string, error) {
 	return userID, nil
 }
 
-func (us *UserService) CreateUser(user models.User) error {
-	uID := uuid.New().String()
-	user.UID = uID
-
-	err := us.repo.SaveUser(user)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (us *UserService) GetUsers() ([]models.User, error) {
 	users, err := us.repo.GetUsers()
 	if err != nil {

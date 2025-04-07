@@ -21,7 +21,6 @@ type Repository interface {
 
 	GetUsers() ([]models.User, error)
 	GetUser(string) (models.User, error)
-	SaveUser(task models.User) error
 	UpdateUser(task models.User) error
 	DeleteUser(string) error
 }
