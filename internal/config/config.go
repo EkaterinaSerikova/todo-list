@@ -7,22 +7,30 @@ import (
 	"strconv"
 )
 
+//  загрузка и управление конфигурацией приложения
+
 type Config struct {
-	Host  string
-	Port  int
-	Debug bool
+	Host        string
+	Port        int
+	DbDsn       string
+	MigratePath string
+	Debug       bool
 }
 
 const (
-	defaultHost     = "localhost"
-	defaultPort int = 8080
+	defaultHost            = "localhost"
+	defaultPort        int = 8080
+	defaultDbDst           = "postgres://user:password@localhost:5432/gt5?sslmode=disable"
+	defaultMigratePath     = "migrations"
 )
 
 func ReadConfig() (*Config, error) {
 	var cfg Config
 
-	flag.StringVar(&cfg.Host, defaultHost, "localhost", "flag for explicit server host specification")
+	flag.StringVar(&cfg.Host, "host", defaultHost, "flag for explicit server host specification")
 	flag.IntVar(&cfg.Port, "port", defaultPort, "flag for explicit server port specifications")
+	flag.StringVar(&cfg.DbDsn, "db", defaultDbDst, "flag for explicit db connection string")
+	flag.StringVar(&cfg.MigratePath, "migrate", defaultMigratePath, "flag for explicit migrate path")
 	flag.BoolVar(&cfg.Debug, "debug", false, "flag for explicit debug mode")
 
 	flag.Parse()

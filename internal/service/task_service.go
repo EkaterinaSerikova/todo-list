@@ -9,6 +9,9 @@ import (
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
 )
 
+// реализация бизнес-логики для работы с задачами
+
+// определение контракта для работы с хранилищем (БД или memory-хранилищем)
 type Repository interface {
 	GetTasks() ([]models.Task, error)
 	GetTask(string) (models.Task, error)
@@ -35,12 +38,13 @@ func NewTaskService(repo Repository) *TaskService {
 	return &TaskService{repo: repo, valid: valid}
 }
 
-func (t *TaskService) CreateTask(task models.Task) error {
+func (t *TaskService) CreateTask(task models.Task, creator_id string) error {
 	tID := uuid.New().String()
 	task.UID = tID
 	now := time.Now()
 	task.CreatedAt = now
 	task.UpdatedAt = now
+	task.CreatorId = creator_id
 	err := t.repo.SaveTask(task)
 	if err != nil {
 		return err

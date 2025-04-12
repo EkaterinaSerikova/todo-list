@@ -9,6 +9,8 @@ import (
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
 )
 
+// HTTP-обработчики для работы с задачами
+
 func (s *ServerApi) getTasks(c *gin.Context) {
 	tasks, err := s.tService.GetTasks()
 	if err != nil {
@@ -25,7 +27,13 @@ func (s *ServerApi) createTask(c *gin.Context) {
 		return
 	}
 
-	if err := s.tService.CreateTask(task); err != nil {
+	creatorId, err := c.Cookie("user_id")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := s.tService.CreateTask(task, creatorId); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}

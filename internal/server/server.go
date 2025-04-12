@@ -11,6 +11,10 @@ import (
 	"github.com/EkaterinaSerikova/todo-list/internal/service"
 )
 
+// реализация HTTP-сервера на фреймворке Gin
+// принимает HTTP-запросы и делегирует обработку сервисам (UserService, TaskService)
+
+// создание экземпляра ServerApi с настройками из конфига (host, port)
 type ServerApi struct {
 	server   *http.Server
 	valid    *validator.Validate
@@ -18,6 +22,7 @@ type ServerApi struct {
 	tService *service.TaskService
 }
 
+// конструктор для создания экземпляра ServerApi
 func New(cfg config.Config, uService *service.UserService, tService *service.TaskService) *ServerApi {
 	server := http.Server{
 		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
@@ -32,10 +37,11 @@ func New(cfg config.Config, uService *service.UserService, tService *service.Tas
 }
 
 func (s *ServerApi) Start() error {
-	s.configRoutes()
-	return s.server.ListenAndServe()
+	s.configRoutes()                 // настройка роутов
+	return s.server.ListenAndServe() // запуск сервера
 }
 
+// настройка маршрутов
 func (s *ServerApi) configRoutes() {
 	router := gin.Default()
 	router.GET("/tasks", s.getTasks)
@@ -44,21 +50,20 @@ func (s *ServerApi) configRoutes() {
 	task := router.Group("/tasks")
 	{
 		task.GET("/:id", s.getTaskById)
-		task.PUT("/:id", s.updateUserById)
+		task.PUT("/:id", s.updateTask)
 		task.DELETE("/:id", s.deleteTask)
 	}
 
 	router.GET("/users", s.getUsers)
-	router.POST("/users", s.createUser)
 
 	users := router.Group("/users")
 	{
 		users.POST("/register", s.registerUser)
 		users.POST("/login", s.loginUser)
 
-		users.GET("/users/:id", s.getUserById)
-		users.PUT("/users/:id", s.updateUserById)
-		users.DELETE("/users/:id", s.deleteUser)
+		users.GET("/:id", s.getUserById)
+		users.PUT("/:id", s.updateUserById)
+		users.DELETE("/:id", s.deleteUser)
 	}
 
 	s.server.Handler = router

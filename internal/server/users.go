@@ -9,6 +9,8 @@ import (
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
 )
 
+// HTTP-обработчики для работы с пользователями
+
 func (s *ServerApi) registerUser(c *gin.Context) {
 	var user models.User
 	err := c.ShouldBindBodyWithJSON(&user)
@@ -31,13 +33,13 @@ func (s *ServerApi) loginUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	uid, err := s.uService.LoginUser(user)
+	user_id, err := s.uService.LoginUser(user)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	c.SetCookie("uid", uid, 3600, "/users/login", "", false, true)
-	c.JSON(http.StatusOK, gin.H{"uid": uid})
+	c.SetCookie("user_id", user_id, 3600, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"user_id": user_id})
 }
 
 func (s *ServerApi) getUsers(c *gin.Context) {
@@ -63,21 +65,6 @@ func (s *ServerApi) getUserById(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrUserNotFound})
 		return
 	}
-}
-
-func (s *ServerApi) createUser(c *gin.Context) {
-	var user models.User
-
-	if err := c.ShouldBindBodyWithJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := s.uService.CreateUser(user); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, user)
 }
 
 func (s *ServerApi) updateUserById(c *gin.Context) {

@@ -8,6 +8,8 @@ import (
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
 )
 
+// реализация бизнес-логики для работы с пользователями
+
 type UserService struct {
 	repo  Repository
 	valid *validator.Validate
