@@ -1,11 +1,12 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/EkaterinaSerikova/todo-list/internal/domain/errors"
+	user_errors "github.com/EkaterinaSerikova/todo-list/internal/domain/errors"
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
 )
 
@@ -13,17 +14,41 @@ import (
 
 func (s *ServerApi) registerUser(c *gin.Context) {
 	var user models.User
-	err := c.ShouldBindBodyWithJSON(&user)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindBodyWithJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"details": err.Error(), // Опционально, можно убрать в production
+		})
 		return
 	}
+
 	uid, err := s.uService.RegisterUser(user)
 	if err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, user_errors.ErrUserAlreadyExists):
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "user already exists",
+			})
+		case errors.Is(err, user_errors.ErrInvalidEmail):
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid email format",
+			})
+		case errors.Is(err, user_errors.ErrWeakPassword):
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "password does not meet requirements",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to register user",
+			})
+		}
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"uid": uid})
+
+	c.JSON(http.StatusCreated, gin.H{
+		"uid":     uid,
+		"message": "user registered successfully",
+	})
 }
 
 func (s *ServerApi) loginUser(c *gin.Context) {
@@ -33,11 +58,22 @@ func (s *ServerApi) loginUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	user_id, err := s.uService.LoginUser(user)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, user_errors.ErrUserNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		case errors.Is(err, user_errors.ErrInvalidCredentials):
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		case errors.Is(err, user_errors.ErrAccountLocked):
+			c.JSON(http.StatusForbidden, gin.H{"error": "account temporarily locked"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "authentication service unavailable"})
+		}
 		return
 	}
+
 	c.SetCookie("user_id", user_id, 3600, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"user_id": user_id})
 }
@@ -45,15 +81,34 @@ func (s *ServerApi) loginUser(c *gin.Context) {
 func (s *ServerApi) getUsers(c *gin.Context) {
 	users, err := s.uService.GetUsers()
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, user_errors.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
+
+	if len(users) == 0 {
+		c.JSON(http.StatusOK, []models.User{})
+		return
+	}
+
 	c.JSON(http.StatusOK, users)
 }
 
 func (s *ServerApi) getUserById(c *gin.Context) {
 	uid := c.Param("id")
 	users, err := s.uService.GetUsers()
+
+	if err != nil {
+		if errors.Is(err, user_errors.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
 
 	for _, user := range users {
 		if user.UID == uid {
@@ -62,7 +117,7 @@ func (s *ServerApi) getUserById(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrUserNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"error": user_errors.ErrUserNotFound})
 		return
 	}
 }
@@ -76,6 +131,14 @@ func (s *ServerApi) updateUserById(c *gin.Context) {
 	}
 
 	users, err := s.uService.GetUsers()
+	if err != nil {
+		if errors.Is(err, user_errors.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
 
 	for i, user := range users {
 		if user.UID == id {
@@ -87,7 +150,7 @@ func (s *ServerApi) updateUserById(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrUserNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"error": user_errors.ErrUserNotFound})
 		return
 	}
 }
@@ -95,6 +158,14 @@ func (s *ServerApi) updateUserById(c *gin.Context) {
 func (s *ServerApi) deleteUser(c *gin.Context) {
 	id := c.Param("id")
 	users, err := s.uService.GetUsers()
+	if err != nil {
+		if errors.Is(err, user_errors.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "users list not available"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not retrieve users"})
+		}
+		return
+	}
 	for i, user := range users {
 		if user.UID == id {
 			users = append(users[:i], users[i+1:]...)
@@ -103,7 +174,7 @@ func (s *ServerApi) deleteUser(c *gin.Context) {
 		}
 	}
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrUserNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"error": user_errors.ErrUserNotFound})
 		return
 	}
 }

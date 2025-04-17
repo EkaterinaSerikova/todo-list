@@ -1,11 +1,12 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/EkaterinaSerikova/todo-list/internal/domain/errors"
+	task_errors "github.com/EkaterinaSerikova/todo-list/internal/domain/errors"
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
 )
 
@@ -14,9 +15,19 @@ import (
 func (s *ServerApi) getTasks(c *gin.Context) {
 	tasks, err := s.tService.GetTasks()
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, task_errors.ErrTaskNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
+
+	if len(tasks) == 0 {
+		c.JSON(http.StatusOK, []models.Task{})
+		return
+	}
+
 	c.JSON(http.StatusOK, tasks)
 }
 
@@ -34,7 +45,11 @@ func (s *ServerApi) createTask(c *gin.Context) {
 	}
 
 	if err := s.tService.CreateTask(task, creatorId); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		if errors.Is(err, task_errors.ErrConflict) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
@@ -44,16 +59,23 @@ func (s *ServerApi) createTask(c *gin.Context) {
 func (s *ServerApi) getTaskById(c *gin.Context) {
 	uid := c.Param("id")
 	tasks, err := s.tService.GetTasks()
+	if err != nil {
+		if errors.Is(err, task_errors.ErrTaskNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
+
 	for _, task := range tasks {
 		if task.UID == uid {
 			c.JSON(http.StatusOK, task)
 			return
 		}
 	}
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrTaskNotFound})
-		return
-	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": task_errors.ErrTaskNotFound.Error()})
 }
 
 func (s *ServerApi) updateTask(c *gin.Context) {
@@ -65,6 +87,14 @@ func (s *ServerApi) updateTask(c *gin.Context) {
 	}
 
 	tasks, err := s.tService.GetTasks()
+	if err != nil {
+		if errors.Is(err, task_errors.ErrTaskNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
 
 	for i, task := range tasks {
 		if task.UID == id {
@@ -75,25 +105,34 @@ func (s *ServerApi) updateTask(c *gin.Context) {
 			return
 		}
 	}
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrTaskNotFound})
-		return
-	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": task_errors.ErrTaskNotFound.Error()})
 }
 
 func (s *ServerApi) deleteTask(c *gin.Context) {
 	id := c.Param("id")
 
 	tasks, err := s.tService.GetTasks()
+	if err != nil {
+		if errors.Is(err, task_errors.ErrTaskNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
+
 	for i, task := range tasks {
 		if task.UID == id {
 			tasks = append(tasks[:i], tasks[i+1:]...)
+			if err := s.tService.CreateTask(task, task.CreatorId); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save tasks"})
+				return
+			}
 			c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
 			return
 		}
 	}
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": errors.ErrTaskNotFound})
-		return
-	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": task_errors.ErrTaskNotFound.Error()})
 }
