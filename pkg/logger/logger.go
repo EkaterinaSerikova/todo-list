@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// реализация настройки логгера для приложения на основе библиотеки zerolog
+
 var logger zerolog.Logger
 var once sync.Once
 
