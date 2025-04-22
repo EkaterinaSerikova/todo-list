@@ -35,6 +35,15 @@ func (m *MemStorage) SaveTask(task models.Task) error {
 	return nil
 }
 
+func (m *MemStorage) SaveTasks(task []models.Task) error {
+	for _, t := range task {
+		if err := m.SaveTask(t); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *MemStorage) UpdateTask(task models.Task) error {
 	_, ok := m.tasks[task.UID]
 	if !ok {

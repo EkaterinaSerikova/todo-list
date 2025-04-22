@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/EkaterinaSerikova/todo-list/internal/domain/models"
+	"github.com/EkaterinaSerikova/todo-list/pkg/logger"
 )
 
 // реализация бизнес-логики для работы с задачами
@@ -16,6 +17,7 @@ type Repository interface {
 	GetTasks() ([]models.Task, error)
 	GetTask(string) (models.Task, error)
 	SaveTask(task models.Task) error
+	SaveTasks([]models.Task) error
 	UpdateTask(task models.Task) error
 	DeleteTask(string) error
 
@@ -82,4 +84,16 @@ func (t *TaskService) DeleteTask(id string) error {
 		return err
 	}
 	return nil
+}
+
+func (t *TaskService) SaveTasks(tasks []models.Task) error {
+	log := logger.Get()
+	for index := range tasks {
+		id := uuid.New().String()
+		tasks[index].UID = id
+	}
+
+	log.Debug().Any("tasks", tasks).Msg("tasks for saving to db")
+
+	return t.repo.SaveTasks(tasks)
 }

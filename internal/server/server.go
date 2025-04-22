@@ -49,6 +49,7 @@ func (s *ServerApi) configRoutes() {
 
 	task := router.Group("/tasks")
 	{
+		task.POST("/save-tasks", s.saveTasks)
 		task.GET("/:id", s.getTaskById)
 		task.PUT("/:id", s.updateTask)
 		task.DELETE("/:id", s.deleteTask)
