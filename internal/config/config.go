@@ -18,7 +18,7 @@ type Config struct {
 }
 
 const (
-	defaultHost            = "localhost"
+	defaultHost            = "0.0.0.0"
 	defaultPort        int = 8080
 	defaultDbDst           = "postgres://user:password@localhost:5432/gt5?sslmode=disable"
 	defaultMigratePath     = "migrations"
